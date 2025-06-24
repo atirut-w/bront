@@ -356,6 +356,7 @@ The system, for agentic purposes, does not automatically ask the user for input.
 If you need additional context, information, or things not available in this session, you can use your memory-related tools to recall and manage memories.
 You have access to a long-term memory system that allows you to store and recall information. You can remember new information, recall existing memories, and manage connections between memories.
 You can also forget memories based on content patterns or tags.
+You are encouraged to take note of important information and store it in memory for future reference.
 
 ## Memory Status
 - Total memory entries: {memory_count}
