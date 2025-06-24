@@ -5,58 +5,31 @@ import os
 import signal
 import sys
 from typing import Dict, Any
-
-
-class MemoryEntry:
-    def __init__(self, content: str, tags: list[str]):
-        self.content = content
-        self.tags = tags
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert MemoryEntry to dictionary for JSON serialization."""
-        return {
-            "content": self.content,
-            "tags": self.tags
-        }
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'MemoryEntry':
-        """Create MemoryEntry from dictionary (JSON deserialization)."""
-        return cls(
-            content=data.get("content", ""),
-            tags=data.get("tags", [])
-        )
+from memory import Memory, MemoryNode, MemoryConnection
 
 
 # Memory file configuration
 MEMORY_FILE = "bront_memory.json"
 
-long_term_memory: list[MemoryEntry] = []
+# Global memory instance
+long_term_memory: Memory = Memory()
 
 
 def load_memory() -> None:
     """Load long-term memory from JSON file."""
     global long_term_memory
-    if os.path.exists(MEMORY_FILE):
-        try:
-            with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                long_term_memory = [MemoryEntry.from_dict(entry) for entry in data]
-            print(f"Loaded {len(long_term_memory)} memory entries from {MEMORY_FILE}")
-        except (json.JSONDecodeError, KeyError, FileNotFoundError) as e:
-            print(f"Error loading memory file: {e}")
-            long_term_memory = []
-    else:
-        print(f"No existing memory file found at {MEMORY_FILE}")
-        long_term_memory = []
+    try:
+        long_term_memory = Memory.load_from_file(MEMORY_FILE)
+        print(f"Loaded {len(long_term_memory)} memory entries from {MEMORY_FILE}")
+    except Exception as e:
+        print(f"Error loading memory file: {e}")
+        long_term_memory = Memory()
 
 
 def save_memory() -> None:
     """Save long-term memory to JSON file."""
     try:
-        data = [entry.to_dict() for entry in long_term_memory]
-        with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        long_term_memory.save_to_file(MEMORY_FILE)
         print(f"Saved {len(long_term_memory)} memory entries to {MEMORY_FILE}")
     except Exception as e:
         print(f"Error saving memory file: {e}")
@@ -82,24 +55,39 @@ async def forget(content_pattern: str, tags: list[str]) -> str:
     if not content_pattern and not tags:
         return "Please provide either content_pattern or tags to forget specific memories."
     
-    original_count = len(long_term_memory)
-    memories_to_keep = []
+    print(f"Forgetting memories with pattern: '{content_pattern}', tags: {tags}")
     
-    for entry in long_term_memory:
+    original_count = len(long_term_memory)
+    nodes_to_keep = []
+    connections_to_keep = []
+    forgotten_ids = set()
+    
+    # Find nodes to forget
+    for node in long_term_memory.nodes:
         should_forget = False
         
         # Check content pattern
-        if content_pattern and content_pattern.lower() in entry.content.lower():
+        if content_pattern and content_pattern.lower() in node.content.lower():
             should_forget = True
         
         # Check tags
-        if tags and set(tags).intersection(entry.tags):
+        if tags and set(tags).intersection(node.tags):
             should_forget = True
         
-        if not should_forget:
-            memories_to_keep.append(entry)
+        if should_forget:
+            forgotten_ids.add(node.id)
+            print(f"Forgetting memory [{node.id}]: {node.content[:60]}...")
+        else:
+            nodes_to_keep.append(node)
     
-    long_term_memory = memories_to_keep
+    # Keep connections that don't involve forgotten nodes
+    for conn in long_term_memory.connections:
+        if conn.from_id not in forgotten_ids and conn.to_id not in forgotten_ids:
+            connections_to_keep.append(conn)
+    
+    # Update memory
+    long_term_memory.nodes = nodes_to_keep
+    long_term_memory.connections = connections_to_keep
     forgotten_count = original_count - len(long_term_memory)
     
     if forgotten_count > 0:
@@ -117,14 +105,12 @@ async def list_tags() -> str:
     if not long_term_memory:
         return "No memories stored, so no tags available."
     
-    all_tags = set()
-    for entry in long_term_memory:
-        all_tags.update(entry.tags)
+    all_tags = long_term_memory.get_tags()
     
     if not all_tags:
         return "No tags found in stored memories."
     
-    sorted_tags = sorted(list(all_tags))
+    sorted_tags = sorted(all_tags)
     return f"Available tags ({len(sorted_tags)}): {', '.join(sorted_tags)}"
 
 
@@ -212,7 +198,10 @@ async def remember(content: str, tags: list[str]) -> None:
     """
     Use this to remember something. This tool will store the content in long-term memory with optional tags.
     """
-    long_term_memory.append(MemoryEntry(content, tags))
+    # Generate a unique ID for the new node
+    node_id = str(len(long_term_memory.nodes))
+    node = MemoryNode(id=node_id, content=content, tags=tags)
+    long_term_memory.add_node(node)
     save_memory()  # Automatically save after adding new memory
     print(f"Remembered: {content} with tags {tags}")
 
@@ -225,12 +214,75 @@ async def recall(tags: list[str]) -> str:
     if not tags:
         return "No tags provided."
     
-    entries = [entry.content for entry in long_term_memory if set(tags).intersection(entry.tags)]
-    return "\n".join(entries) if entries else "No entries found for the given tags."
+    recalled_nodes = long_term_memory.recall(tags)
+    if not recalled_nodes:
+        return "No entries found for the given tags."
+    
+    entries = [f"[{node.id}] {node.content} (tags: {', '.join(node.tags)})" for node in recalled_nodes]
+    print(f"Recalled {len(recalled_nodes)} entries for tags {tags}.")
+    return "\n".join(entries)
+
+
+@function_tool
+async def connect_memories(from_id: str, to_id: str, connection_type: str = "related") -> str:
+    """
+    Use this to create a connection between two memories.
+    - from_id: ID of the source memory node
+    - to_id: ID of the target memory node
+    - connection_type: Type of connection (default: "related")
+    """
+    try:
+        connection = MemoryConnection(from_id=from_id, to_id=to_id, type=connection_type)
+        long_term_memory.add_connection(connection)
+        save_memory()
+        print(f"Created connection: {from_id} -> {to_id} ({connection_type})")
+        return f"Created {connection_type} connection from memory {from_id} to memory {to_id}"
+    except ValueError as e:
+        return f"Error creating connection: {e}"
+
+
+@function_tool
+async def disconnect_memories(from_id: str, to_id: str, connection_type: str = "") -> str:
+    """
+    Use this to remove a connection between two memories.
+    - from_id: ID of the source memory node
+    - to_id: ID of the target memory node
+    - connection_type: Type of connection to remove (optional - if empty, removes all connections between the nodes)
+    """
+    print(f"Disconnecting memories: {from_id} -> {to_id}" + (f" ({connection_type})" if connection_type else ""))
+    
+    original_count = len(long_term_memory.connections)
+    connections_to_keep = []
+    
+    for conn in long_term_memory.connections:
+        should_remove = False
+        
+        # Check if this connection matches the criteria
+        if conn.from_id == from_id and conn.to_id == to_id:
+            if not connection_type or conn.type == connection_type:
+                should_remove = True
+        
+        if not should_remove:
+            connections_to_keep.append(conn)
+    
+    long_term_memory.connections = connections_to_keep
+    removed_count = original_count - len(long_term_memory.connections)
+    
+    if removed_count > 0:
+        print(f"Removed {removed_count} connection(s)")
+        save_memory()
+        if connection_type:
+            return f"Removed {removed_count} '{connection_type}' connection(s) from memory {from_id} to memory {to_id}"
+        else:
+            return f"Removed {removed_count} connection(s) from memory {from_id} to memory {to_id}"
+    else:
+        print("No matching connections found")
+        return f"No connections found between memory {from_id} and memory {to_id}" + (f" of type '{connection_type}'" if connection_type else "")
 
 
 bront = Agent(
     name="Bront",
+    model="gpt-4.1-mini",
     tools=[
         get_user_input,
         get_env_info,
@@ -239,6 +291,8 @@ bront = Agent(
         recall,
         forget,
         list_tags,
+        connect_memories,
+        disconnect_memories,
         read_file,
         write_file,
         diff_edit_file,
@@ -274,7 +328,7 @@ async def main():
                     context,
                 )
                 context = result.to_input_list()
-                print(result.final_output)
+                print(f"Bront: {result.final_output}")
     except KeyboardInterrupt:
         print("\nShutting down gracefully...")
         save_memory()
