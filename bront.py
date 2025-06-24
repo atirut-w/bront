@@ -209,17 +209,31 @@ async def remember_memory(content: str, tags: list[str]) -> None:
 @function_tool
 async def recall_memory(tags: list[str]) -> str:
     """
-    Use this to recall something from long-term memory. This tool will return all entries that match the given tags.
+    Use this to recall something from long-term memory. This tool will return all entries that match the given tags,
+    along with related memories and their relation types.
     """
     if not tags:
         return "No tags provided."
     
-    recalled_nodes = long_term_memory.recall(tags)
-    if not recalled_nodes:
+    recalled_items = long_term_memory.recall(tags)
+    if not recalled_items:
         return "No entries found for the given tags."
     
-    entries = [f"[{node.id}] {node.content} (tags: {', '.join(node.tags)})" for node in recalled_nodes]
-    print(f"Recalled {len(recalled_nodes)} entries for tags {tags}.")
+    entries = []
+    for node, is_direct_match, connections in recalled_items:
+        if is_direct_match:
+            # Direct match - show with tags
+            entries.append(f"[{node.id}] {node.content} (tags: {', '.join(node.tags)})")
+        else:
+            # Related memory - show with relation type
+            relation_info = []
+            for conn_type, connected_id in connections:
+                relation_info.append(f"{conn_type} to [{connected_id}]")
+            
+            relation_str = ", ".join(relation_info)
+            entries.append(f"[{node.id}] {node.content} (related: {relation_str})")
+    
+    print(f"Recalled {len(recalled_items)} entries for tags {tags}.")
     return "\n".join(entries)
 
 

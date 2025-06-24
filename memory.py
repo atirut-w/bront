@@ -70,8 +70,16 @@ class Memory:
             tags.update(node.tags)
         return list(tags)
 
-    def recall(self, tags: list[str]) -> list[MemoryNode]:
-        """Recall nodes that match the given tags."""
+    def recall(self, tags: list[str]) -> list[tuple]:
+        """
+        Recall nodes that match the given tags.
+        
+        Returns a list of tuples, each containing:
+        - node: The MemoryNode object
+        - is_direct_match: Boolean indicating if the node was directly matched by tags
+        - connections: List of connection details (only for related nodes)
+          Each connection is a tuple of (connection_type, connected_node_id)
+        """
         # Find nodes that match the given tags
         matched_nodes = []
         matched_ids = set()
@@ -80,21 +88,34 @@ class Memory:
                 matched_nodes.append(node)
                 matched_ids.add(node.id)
 
-        # Find first neighbors (nodes directly connected to matched nodes)
-        neighbor_ids = set()
-        for conn in self.connections:
-            if conn.from_id in matched_ids:
-                neighbor_ids.add(conn.to_id)
-            if conn.to_id in matched_ids:
-                neighbor_ids.add(conn.from_id)
-
         # Create a lookup dictionary for better performance
         node_lookup = {node.id: node for node in self.nodes}
         
-        # Collect neighbor nodes, avoiding duplicates
-        neighbors = [node_lookup[node_id] for node_id in neighbor_ids if node_id not in matched_ids]
-
-        return matched_nodes + neighbors
+        # Prepare result list with direct matches
+        result = [(node, True, []) for node in matched_nodes]
+        
+        # Find and add related nodes with connection information
+        related_nodes = {}  # Dictionary to track related nodes and their connections
+        
+        for conn in self.connections:
+            # Check connections from matched nodes to other nodes
+            if conn.from_id in matched_ids and conn.to_id not in matched_ids:
+                if conn.to_id not in related_nodes:
+                    related_nodes[conn.to_id] = []
+                related_nodes[conn.to_id].append((conn.type, conn.from_id))
+            
+            # Check connections from other nodes to matched nodes
+            elif conn.to_id in matched_ids and conn.from_id not in matched_ids:
+                if conn.from_id not in related_nodes:
+                    related_nodes[conn.from_id] = []
+                related_nodes[conn.from_id].append((conn.type, conn.to_id))
+        
+        # Add related nodes to result
+        for node_id, connections in related_nodes.items():
+            if node_id in node_lookup:
+                result.append((node_lookup[node_id], False, connections))
+        
+        return result
     
     def __len__(self) -> int:
         """Return the number of nodes in memory."""
