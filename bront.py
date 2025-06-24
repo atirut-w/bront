@@ -114,12 +114,12 @@ async def list_memory_tags() -> str:
     return f"Available tags ({len(sorted_tags)}): {', '.join(sorted_tags)}"
 
 
-# @function_tool
-# async def end_turn() -> str:
-#     """
-#     Use this to end the current turn and get user input.
-#     """
-#     return input("> ")
+@function_tool
+async def get_user_input() -> str:
+    """
+    Use this to end the current turn and get user input.
+    """
+    return input("> ")
 
 
 @function_tool
@@ -238,12 +238,12 @@ async def recall_memory(tags: list[str]) -> str:
 
 
 @function_tool
-async def connect_memories(from_id: str, to_id: str, connection_type: str = "related") -> str:
+async def connect_memories(from_id: str, to_id: str, connection_type: str) -> str:
     """
     Use this to create a connection between two memories.
     - from_id: ID of the source memory node
     - to_id: ID of the target memory node
-    - connection_type: Type of connection (default: "related")
+    - connection_type: Type of connection
     """
     try:
         connection = MemoryConnection(from_id=from_id, to_id=to_id, type=connection_type)
@@ -294,10 +294,25 @@ async def disconnect_memories(from_id: str, to_id: str, connection_type: str = "
         return f"No connections found between memory {from_id} and memory {to_id}" + (f" of type '{connection_type}'" if connection_type else "")
 
 
+@function_tool
+async def list_memory_connections() -> str:
+    """
+    List all memory connections.
+    """
+    connections = long_term_memory.connections
+    if not connections:
+        return "No memory connections found."
+
+    connection_lines = []
+    for conn in connections:
+        connection_lines.append(f"[{conn.from_id}] -> [{conn.to_id}] ({conn.type})")
+    return "\n".join(connection_lines)
+
+
 bront = Agent(
     name="Bront",
     tools=[
-        # end_turn,
+        get_user_input,
         get_env_info,
         run_command,
         remember_memory,
@@ -329,7 +344,7 @@ async def main():
     context = [
         {
             "role": "system",
-            "content": f"Chat started. Utilize memory tools whenever context is insufficient. There are {memory_count} memory entries available for consultation.",
+            "content": f"Chat started. Utilize memory tools like `list_memory_tags` whenever context is insufficient. There are {memory_count} memory entries available for consultation. Use `get_user_input` to end the current turn and get user input.",
         }
     ]
     
@@ -340,13 +355,8 @@ async def main():
                     bront,
                     context,
                 )
-                context = result.to_input_list()
                 print(f"Bront: {result.final_output}")
-                user_input: TResponseInputItem = {
-                    "role": "user",
-                    "content": input("> ")
-                }
-                context.append(user_input)
+                context = result.to_input_list()
     except KeyboardInterrupt:
         print("\nShutting down gracefully...")
         save_memory()
