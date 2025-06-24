@@ -282,7 +282,6 @@ async def disconnect_memories(from_id: str, to_id: str, connection_type: str = "
 
 bront = Agent(
     name="Bront",
-    model="gpt-4.1-mini",
     tools=[
         # end_turn,
         get_env_info,
@@ -316,7 +315,7 @@ async def main():
     context = [
         {
             "role": "system",
-            "content": f"Chat started. You can get user input using the get_user_input tool. Your long-term memory is automatically loaded from and saved to 'bront_memory.json'. You currently have {memory_count} memories stored. Use the remember tool to store information, recall to retrieve it, and forget to remove specific memories.",
+            "content": f"Chat started. Utilize memory tools whenever context is insufficient. There are {memory_count} memory entries available for consultation.",
         }
     ]
     
