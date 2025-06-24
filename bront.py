@@ -1,4 +1,4 @@
-from agents import Agent, TResponseInputItem, function_tool, trace, Runner
+from agents import Agent, TResponseInputItem, function_tool, trace, Runner, WebSearchTool
 import asyncio
 import json
 import os
@@ -325,6 +325,7 @@ bront = Agent(
         read_file,
         write_file,
         diff_edit_file,
+        WebSearchTool(),
     ],
 )
 context: list[TResponseInputItem] = []
