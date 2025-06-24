@@ -344,7 +344,21 @@ async def main():
     context = [
         {
             "role": "system",
-            "content": f"Chat started. Utilize memory tools like `list_memory_tags` whenever context is insufficient. There are {memory_count} memory entries available for consultation. Use `get_user_input` to end the current turn and get user input.",
+            "content": f"""# System Instructions
+This chat has been started without prior context.
+
+## Chat interface
+The system, for agentic purposes, does not automatically ask the user for input. Instead, it waits for you to call a tool to get user input. You are free to ask the user for input at any time as you see fit.
+
+## Memory
+If you need additional context, information, or things not available in this session, you can use your memory-related tools to recall and manage memories.
+You have access to a long-term memory system that allows you to store and recall information. You can remember new information, recall existing memories, and manage connections between memories.
+You can also forget memories based on content patterns or tags.
+
+## Memory Status
+- Total memory entries: {memory_count}
+- Total unique tags: {len(long_term_memory.get_tags())}
+""",
         }
     ]
     
