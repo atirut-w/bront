@@ -311,6 +311,16 @@ async def list_memory_connections() -> str:
     return "\n".join(connection_lines)
 
 
+@function_tool
+async def end_session() -> str:
+    """
+    Use this to end the current session. This will save the memory and exit the program. Be sure to commit important memories and connect them before calling this.
+    """
+    print("Ending session and saving memory...")
+    save_memory()
+    sys.exit(0)
+
+
 bront = Agent(
     name="Bront",
     tools=[
@@ -327,6 +337,7 @@ bront = Agent(
         read_file,
         write_file,
         diff_edit_file,
+        end_session,
         WebSearchTool(),
     ],
 )
