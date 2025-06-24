@@ -43,7 +43,7 @@ def signal_handler(signum, frame):
 
 
 @function_tool
-async def forget(content_pattern: str, tags: list[str]) -> str:
+async def forget_memory(content_pattern: str, tags: list[str]) -> str:
     """
     Use this to forget specific memories. You can forget by content pattern or tags.
     - content_pattern: Remove memories containing this text (case-insensitive). Use empty string "" if not filtering by content.
@@ -98,7 +98,7 @@ async def forget(content_pattern: str, tags: list[str]) -> str:
 
 
 @function_tool
-async def list_tags() -> str:
+async def list_memory_tags() -> str:
     """
     Use this to get a list of all unique tags used in long-term memory.
     """
@@ -194,7 +194,7 @@ async def run_command(command: str) -> str:
 
 
 @function_tool
-async def remember(content: str, tags: list[str]) -> None:
+async def remember_memory(content: str, tags: list[str]) -> None:
     """
     Use this to remember something. This tool will store the content in long-term memory with optional tags.
     """
@@ -207,7 +207,7 @@ async def remember(content: str, tags: list[str]) -> None:
 
 
 @function_tool
-async def recall(tags: list[str]) -> str:
+async def recall_memory(tags: list[str]) -> str:
     """
     Use this to recall something from long-term memory. This tool will return all entries that match the given tags.
     """
@@ -287,10 +287,10 @@ bront = Agent(
         # end_turn,
         get_env_info,
         run_command,
-        remember,
-        recall,
-        forget,
-        list_tags,
+        remember_memory,
+        recall_memory,
+        forget_memory,
+        list_memory_tags,
         connect_memories,
         disconnect_memories,
         read_file,
