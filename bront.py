@@ -355,7 +355,6 @@ async def main():
     load_memory()
     
     # Initialize context with memory information
-    memory_count = len(long_term_memory)
     context = [
         {
             "role": "system",
@@ -370,8 +369,9 @@ If you need additional context, information, or things not available in this ses
 You are encouraged to take note of important information and store it in memory for future reference.
 
 ## Memory Status
-- Total memory entries: {memory_count}
+- Total memory entries: {len(long_term_memory)}
 - Total unique tags: {len(long_term_memory.get_tags())}
+- Memory connections: {len(long_term_memory.connections)}
 """,
         }
     ]
