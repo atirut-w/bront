@@ -119,6 +119,7 @@ async def get_user_input() -> str:
     """
     Use this to end the current turn and get user input.
     """
+    print("=" * 20)
     return input("> ")
 
 
