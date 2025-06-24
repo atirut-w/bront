@@ -1,4 +1,11 @@
-from agents import Agent, TResponseInputItem, function_tool, trace, Runner, WebSearchTool
+from agents import (
+    Agent,
+    TResponseInputItem,
+    function_tool,
+    trace,
+    Runner,
+    WebSearchTool,
+)
 import asyncio
 import json
 import os
@@ -52,45 +59,47 @@ async def forget_memory(content_pattern: str, tags: list[str]) -> str:
     If both content_pattern and tags are provided, memories matching either condition will be removed.
     """
     global long_term_memory
-    
+
     if not content_pattern and not tags:
-        return "Please provide either content_pattern or tags to forget specific memories."
-    
+        return (
+            "Please provide either content_pattern or tags to forget specific memories."
+        )
+
     print(f"Forgetting memories with pattern: '{content_pattern}', tags: {tags}")
-    
+
     original_count = len(long_term_memory)
     nodes_to_keep = []
     connections_to_keep = []
     forgotten_ids = set()
-    
+
     # Find nodes to forget
     for node in long_term_memory.nodes:
         should_forget = False
-        
+
         # Check content pattern
         if content_pattern and content_pattern.lower() in node.content.lower():
             should_forget = True
-        
+
         # Check tags
         if tags and set(tags).intersection(node.tags):
             should_forget = True
-        
+
         if should_forget:
             forgotten_ids.add(node.id)
             print(f"Forgetting memory [{node.id}]: {node.content[:60]}...")
         else:
             nodes_to_keep.append(node)
-    
+
     # Keep connections that don't involve forgotten nodes
     for conn in long_term_memory.connections:
         if conn.from_id not in forgotten_ids and conn.to_id not in forgotten_ids:
             connections_to_keep.append(conn)
-    
+
     # Update memory
     long_term_memory.nodes = nodes_to_keep
     long_term_memory.connections = connections_to_keep
     forgotten_count = original_count - len(long_term_memory)
-    
+
     if forgotten_count > 0:
         save_memory()  # Save after forgetting
         return f"Forgot {forgotten_count} memory entries. {len(long_term_memory)} memories remain."
@@ -105,12 +114,12 @@ async def list_memory_tags() -> str:
     """
     if not long_term_memory:
         return "No memories stored, so no tags available."
-    
+
     all_tags = long_term_memory.get_tags()
-    
+
     if not all_tags:
         return "No tags found in stored memories."
-    
+
     sorted_tags = sorted(all_tags)
     return f"Available tags ({len(sorted_tags)}): {', '.join(sorted_tags)}"
 
@@ -133,6 +142,7 @@ async def get_env_info() -> str:
 
     return str(os.environ)
 
+
 @function_tool
 async def read_file(path: str) -> str:
     """
@@ -145,6 +155,7 @@ async def read_file(path: str) -> str:
             return f.read()
     except Exception as e:
         return f"Error reading file '{path}': {e}"
+
 
 @function_tool
 async def write_file(path: str, content: str) -> str:
@@ -161,6 +172,7 @@ async def write_file(path: str, content: str) -> str:
         return f"Successfully wrote to file '{path}'."
     except Exception as e:
         return f"Error writing to file '{path}': {e}"
+
 
 @function_tool
 async def diff_edit_file(path: str, search: str, replace: str) -> str:
@@ -216,11 +228,11 @@ async def recall_memory(tags: list[str]) -> str:
     """
     if not tags:
         return "No tags provided."
-    
+
     recalled_items = long_term_memory.recall(tags)
     if not recalled_items:
         return "No entries found for the given tags."
-    
+
     entries = []
     for node, is_direct_match, connections in recalled_items:
         if is_direct_match:
@@ -231,10 +243,10 @@ async def recall_memory(tags: list[str]) -> str:
             relation_info = []
             for conn_type, connected_id in connections:
                 relation_info.append(f"{conn_type} to [{connected_id}]")
-            
+
             relation_str = ", ".join(relation_info)
             entries.append(f"[{node.id}] {node.content} (related: {relation_str})")
-    
+
     print(f"Recalled {len(recalled_items)} entries for tags {tags}.")
     return "\n".join(entries)
 
@@ -248,7 +260,9 @@ async def connect_memories(from_id: str, to_id: str, connection_type: str) -> st
     - connection_type: Type of connection
     """
     try:
-        connection = MemoryConnection(from_id=from_id, to_id=to_id, type=connection_type)
+        connection = MemoryConnection(
+            from_id=from_id, to_id=to_id, type=connection_type
+        )
         long_term_memory.add_connection(connection)
         save_memory()
         print(f"Created connection: {from_id} -> {to_id} ({connection_type})")
@@ -258,32 +272,37 @@ async def connect_memories(from_id: str, to_id: str, connection_type: str) -> st
 
 
 @function_tool
-async def disconnect_memories(from_id: str, to_id: str, connection_type: str = "") -> str:
+async def disconnect_memories(
+    from_id: str, to_id: str, connection_type: str = ""
+) -> str:
     """
     Use this to remove a connection between two memories.
     - from_id: ID of the source memory node
     - to_id: ID of the target memory node
     - connection_type: Type of connection to remove (optional - if empty, removes all connections between the nodes)
     """
-    print(f"Disconnecting memories: {from_id} -> {to_id}" + (f" ({connection_type})" if connection_type else ""))
-    
+    print(
+        f"Disconnecting memories: {from_id} -> {to_id}"
+        + (f" ({connection_type})" if connection_type else "")
+    )
+
     original_count = len(long_term_memory.connections)
     connections_to_keep = []
-    
+
     for conn in long_term_memory.connections:
         should_remove = False
-        
+
         # Check if this connection matches the criteria
         if conn.from_id == from_id and conn.to_id == to_id:
             if not connection_type or conn.type == connection_type:
                 should_remove = True
-        
+
         if not should_remove:
             connections_to_keep.append(conn)
-    
+
     long_term_memory.connections = connections_to_keep
     removed_count = original_count - len(long_term_memory.connections)
-    
+
     if removed_count > 0:
         print(f"Removed {removed_count} connection(s)")
         save_memory()
@@ -293,7 +312,9 @@ async def disconnect_memories(from_id: str, to_id: str, connection_type: str = "
             return f"Removed {removed_count} connection(s) from memory {from_id} to memory {to_id}"
     else:
         print("No matching connections found")
-        return f"No connections found between memory {from_id} and memory {to_id}" + (f" of type '{connection_type}'" if connection_type else "")
+        return f"No connections found between memory {from_id} and memory {to_id}" + (
+            f" of type '{connection_type}'" if connection_type else ""
+        )
 
 
 @function_tool
@@ -346,14 +367,14 @@ context: list[TResponseInputItem] = []
 
 async def main():
     global context
-    
+
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     # Load memory at startup
     load_memory()
-    
+
     # Initialize context with memory information
     context = [
         {
@@ -375,7 +396,7 @@ You are encouraged to take note of important information and store it in memory 
 """,
         }
     ]
-    
+
     try:
         with trace("Bront"):
             while True:
