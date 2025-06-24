@@ -1,3 +1,6 @@
+# Bront stuff
+bront_memory.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
