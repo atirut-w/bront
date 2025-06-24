@@ -114,12 +114,12 @@ async def list_tags() -> str:
     return f"Available tags ({len(sorted_tags)}): {', '.join(sorted_tags)}"
 
 
-@function_tool
-async def get_user_input() -> str:
-    """
-    Use this to get answers from the user. This tool will prompt the user for input and return their response.
-    """
-    return input("> ")
+# @function_tool
+# async def end_turn() -> str:
+#     """
+#     Use this to end the current turn and get user input.
+#     """
+#     return input("> ")
 
 
 @function_tool
@@ -284,7 +284,7 @@ bront = Agent(
     name="Bront",
     model="gpt-4.1-mini",
     tools=[
-        get_user_input,
+        # end_turn,
         get_env_info,
         run_command,
         remember,
@@ -329,6 +329,11 @@ async def main():
                 )
                 context = result.to_input_list()
                 print(f"Bront: {result.final_output}")
+                user_input: TResponseInputItem = {
+                    "role": "user",
+                    "content": input("> ")
+                }
+                context.append(user_input)
     except KeyboardInterrupt:
         print("\nShutting down gracefully...")
         save_memory()
