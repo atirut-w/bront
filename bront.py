@@ -181,6 +181,7 @@ async def diff_edit_file(path: str, search: str, replace: str) -> str:
     except Exception as e:
         return f"Error editing file '{path}': {e}"
 
+
 @function_tool
 async def run_command(command: str) -> str:
     """
@@ -190,7 +191,6 @@ async def run_command(command: str) -> str:
 
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     return result.stdout if result.returncode == 0 else result.stderr
-
 
 
 @function_tool
@@ -319,6 +319,7 @@ bront = Agent(
         recall_memory,
         forget_memory,
         list_memory_tags,
+        list_memory_connections,
         connect_memories,
         disconnect_memories,
         read_file,
