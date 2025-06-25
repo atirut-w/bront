@@ -393,6 +393,9 @@ You are encouraged to take note of important information and store it in memory 
 - Total memory entries: {len(long_term_memory)}
 - Total unique tags: {len(long_term_memory.get_tags())}
 - Memory connections: {len(long_term_memory.connections)}
+
+## Web Search
+You can use the web search tool to find information online. Use it when you need to look up something that is not in your memory or when you need the latest information.
 """,
         }
     ]
