@@ -380,10 +380,11 @@ async def main():
         {
             "role": "system",
             "content": f"""# System Instructions
-This chat has been started without prior context. Use your memory tools to recall relevant information from long-term memory.
+This chat has been started without prior context. Use your memory tools first to recall relevant information from long-term memory.
 
 ## Chat interface
-The system, for agentic purposes, does not automatically ask the user for input. Instead, it waits for you to call a tool to get user input. You are free to ask the user for input at any time as you see fit.
+The system, for agentic purposes, does not automatically ask the user for input. Instead, it waits for you to call a tool to get user input and allows you to manage the conversation flow.
+You can use the `get_user_input` tool to prompt the user for input when needed.
 
 ## Memory
 If you need additional context, information, or things not available in this session, you can use your memory-related tools to recall and manage memories.
